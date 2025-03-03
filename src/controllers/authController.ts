@@ -15,6 +15,8 @@ interface RegisterUserRequest {
     username: string;
     email: string;
     password: string;
+    isAdmin:boolean
+
 }
 
 interface LoginUserRequest {
@@ -26,7 +28,7 @@ interface LoginUserRequest {
 // @route   POST /api/auth/register
 // @access  Public
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
-    const { username, email, password }: RegisterUserRequest = req.body;
+    const { username, email, password,isAdmin }: RegisterUserRequest = req.body;
 
     // Check if user already exists
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
@@ -38,7 +40,9 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
     const user = await User.create({
         username,
         email,
-        password
+        password,
+        isAdmin: isAdmin || false // Allow setting admin status if provided
+
     });
 
     if (user) {

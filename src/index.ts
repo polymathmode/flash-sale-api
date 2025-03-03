@@ -3,6 +3,10 @@ import dotenv from 'dotenv';
 import connectDB from './config/db';
  import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/authRoutes';
+import productRoutes from "./routes/productRoutes"
+import saleRoutes from './routes/saleRoutes'
+import purchaseRoutes from "./routes/purchaseRoutes"
+
 
 dotenv.config();
 
@@ -15,6 +19,10 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/sales', saleRoutes);
+app.use('/api/purchases', purchaseRoutes);
+
 
 
 
