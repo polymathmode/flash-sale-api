@@ -1,6 +1,5 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
-// Product interface
 export interface IProduct extends Document {
   name: string;
   description: string;
@@ -12,7 +11,6 @@ export interface IProduct extends Document {
   updatedAt: Date;
 }
 
-// Create schema
 const productSchema = new Schema<IProduct>({
   name: {
     type: String,

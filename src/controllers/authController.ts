@@ -2,14 +2,8 @@ import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import asyncHandler from '../utils/asyncHandler';
 import ApiError from '../utils/ApiError';
-import jwt from 'jsonwebtoken';
+import { generateToken } from './helpers';
 
-// Generate JWT token
-const generateToken = (id: string): string => {
-    return jwt.sign({ id }, process.env.JWT_SECRET as string, {
-        expiresIn: '30d'
-    });
-};
 
 interface RegisterUserRequest {
     username: string;
@@ -30,18 +24,16 @@ interface LoginUserRequest {
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
     const { username, email, password,isAdmin }: RegisterUserRequest = req.body;
 
-    // Check if user already exists
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
     if (userExists) {
         throw new ApiError(400, 'User already exists');
     }
 
-    // Create user
     const user = await User.create({
         username,
         email,
         password,
-        isAdmin: isAdmin || false // Allow setting admin status if provided
+        isAdmin: isAdmin || false 
 
     });
 
@@ -63,13 +55,11 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
 export const loginUser = asyncHandler(async (req: Request, res: Response) => {
     const { email, password }: LoginUserRequest = req.body;
 
-    // Check for user email
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
         throw new ApiError(401, 'Invalid credentials');
     }
 
-    // Check if password matches
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
         throw new ApiError(401, 'Invalid credentials');

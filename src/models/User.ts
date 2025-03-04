@@ -2,7 +2,6 @@
 import mongoose, { Document, Schema, Model,Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-// User interface
 export interface IUser extends Document {
   _id: Types.ObjectId; 
   username: string;
@@ -15,7 +14,6 @@ export interface IUser extends Document {
   matchPassword(enteredPassword: string): Promise<boolean>;
 }
 
-// Create schema
 const userSchema = new Schema<IUser>({
   username: {
     type: String,
@@ -46,14 +44,15 @@ const userSchema = new Schema<IUser>({
   }
 }, { timestamps: true });
 
-// Password hashing middleware
+
+userSchema.index({ email: 1 }); // Index on email for faster lookups
+
 userSchema.pre('save', async function(this: IUser, next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Method to check password
 userSchema.methods.matchPassword = async function(enteredPassword: string): Promise<boolean> {
   return await bcrypt.compare(enteredPassword, this.password);
 };

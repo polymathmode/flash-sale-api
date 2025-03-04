@@ -6,7 +6,6 @@ export enum SaleStatus {
   ENDED = 'ended'
 }
 
-// SaleEvent interface
 export interface ISaleEvent extends Document {
   productId: mongoose.Types.ObjectId;
   startTime: Date;
@@ -20,7 +19,6 @@ export interface ISaleEvent extends Document {
   updatedAt: Date;
 }
 
-// Create schema
 const saleEventSchema = new Schema<ISaleEvent>({
   productId: {
     type: Schema.Types.ObjectId,
@@ -61,7 +59,6 @@ const saleEventSchema = new Schema<ISaleEvent>({
   timestamps: true
 });
 
-// Add indexes for better query performance
 saleEventSchema.index({ isActive: 1 });
 saleEventSchema.index({ startTime: 1 });
 saleEventSchema.index({ status: 1 });

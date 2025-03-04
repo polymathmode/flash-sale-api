@@ -4,7 +4,6 @@ import asyncHandler from '../utils/asyncHandler';
 import ApiError from '../utils/ApiError';
 import User, { IUser } from '../models/User';
 
-// Extend Express Request interface to include user
 declare global {
   namespace Express {
     interface Request {
@@ -23,14 +22,12 @@ interface JwtPayload {
 export const protect = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   let token: string | undefined;
 
-  // Check for token in Authorization header
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
 
-      // Get user from token
       const user = await User.findById(decoded.id).select('-password');
 
       if (!user) {

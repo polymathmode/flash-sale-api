@@ -28,110 +28,97 @@ interface LeaderboardResult {
  * Uses findOneAndUpdate with versioning to prevent race conditions
  */
 export const processPurchase = async (
-  userId: string, 
-  saleEventId: string, 
+  userId: string,
+  saleEventId: string,
   quantity: number = 1
 ): Promise<PurchaseResult> => {
-  // Start a session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // 1. Check if sale is active
-    const saleEvent = await SaleEvent.findById(saleEventId).session(session);
-    
-    if (!saleEvent) {
-      throw new ApiError(404, 'Sale event not found');
-    }
-    
-    if (saleEvent.status !== SaleStatus.ACTIVE) {
-      throw new ApiError(400, 'Sale is not active');
-    }
-    
-    if (saleEvent.currentStock < quantity) {
-      throw new ApiError(400, 'Not enough stock available');
-    }
-    
-    // const now = new Date();
-    // if (now < saleEvent.startTime) {
-    //   throw new ApiError(400, 'Sale has not started yet');
-    // }
+    //  check if sale is active
+    const saleEvent = await SaleEvent.findOneAndUpdate(
+      { _id: saleEventId, status: SaleStatus.ACTIVE, currentStock: { $gte: quantity } },
+      { $inc: { currentStock: -quantity } },
+      { new: true, session }
+    );
 
-    // 2. Check if user has already purchased maximum allowed
+    if (!saleEvent) {
+      throw new ApiError(400, 'Sale is inactive or stock depleted.');
+    }
+
+
+    const now = new Date();
+    if (now < saleEvent.startTime) {
+      throw new ApiError(400, 'Sale has not started yet');
+    }
+
     const userPurchases = await Purchase.countDocuments({
       saleEventId,
       userId
     }).session(session);
-    
+
     if (userPurchases >= saleEvent.maxPurchasePerUser) {
       throw new ApiError(400, 'You have reached the maximum purchase limit for this sale');
     }
 
-    // 3. Get product details
     const product = await Product.findById(saleEvent.productId).session(session);
     if (!product) {
       throw new ApiError(404, 'Product not found');
     }
 
-    // 4. Critical section: Update stock with optimistic concurrency control
-    // Using findOneAndUpdate with specific conditions ensures atomicity
+    //  update stock with concurrency control
     const updatedSale = await SaleEvent.findOneAndUpdate(
-      { 
+      {
         _id: saleEventId,
         status: SaleStatus.ACTIVE,
         currentStock: { $gte: quantity }
       },
-      { 
+      {
         $inc: { currentStock: -quantity },
-        // If stock is now 0, end the sale
-        ...(saleEvent.currentStock - quantity <= 0 ? { 
+        ...(saleEvent.currentStock - quantity <= 0 ? {
           status: SaleStatus.ENDED,
-        //   endTime: now
+          endTime: now
         } : {})
       },
-      { 
+      {
         new: true,
         runValidators: true,
         session
       }
     );
 
-    // If update failed due to concurrent operations or stock depletion
+    // if update failed due to concurrent operations or stock depletion
     if (!updatedSale) {
-      throw new ApiError(400, 'Unable to complete purchase. Stock may have been depleted.');
+      throw new ApiError(400, 'Stock was just sold out. Please try again.');
     }
 
-    // 5. Create purchase record with a unique transaction ID
     const purchase = await Purchase.create([{
       saleEventId,
       userId,
       productId: product._id,
       quantity,
-    //   purchaseTime: now,
+      purchaseTime: now,
       totalPrice: product.salePrice * quantity,
       transactionId: uuidv4()
     }], { session });
 
-    // 6. Update user's purchase count
     await User.findByIdAndUpdate(
       userId,
       { $inc: { purchaseCount: quantity } },
       { session }
     );
 
-    // 7. Commit transaction
     await session.commitTransaction();
-    
+
     return {
       purchase: purchase[0],
       remainingStock: updatedSale.currentStock
     };
   } catch (error) {
-    // Abort transaction on error
     await session.abortTransaction();
-    throw error;
+    throw new ApiError(500, 'Purchase failed. Please try again.');
   } finally {
-    // End session
     session.endSession();
   }
 };
@@ -140,13 +127,13 @@ export const processPurchase = async (
  * Get purchase leaderboard in chronological order
  */
 export const getLeaderboard = async (
-  saleEventId: string, 
-  page: number = 1, 
+  saleEventId: string,
+  page: number = 1,
   limit: number = 50
 ): Promise<LeaderboardResult> => {
   const skip = (page - 1) * limit;
-  
-  // Aggregation pipeline for efficient leaderboard with pagination
+
+  // aggregation pipeline for efficient leaderboard with pagination
   const purchases = await Purchase.aggregate([
     { $match: { saleEventId: new mongoose.Types.ObjectId(saleEventId) } },
     { $sort: { purchaseTime: 1 } },
@@ -178,10 +165,9 @@ export const getLeaderboard = async (
       }
     }
   ]);
-  
-  // Get total count for pagination
+
   const total = await Purchase.countDocuments({ saleEventId });
-  
+
   return {
     purchases,
     pagination: {

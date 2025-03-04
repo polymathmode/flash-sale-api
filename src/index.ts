@@ -15,10 +15,10 @@ dotenv.config();
  connectDB();
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
-// Middleware
+// middleware
 app.use(express.json());
 
-// Routes
+// routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/sales', saleRoutes);
@@ -33,7 +33,6 @@ app.listen(PORT, () => {
 
 
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err: Error) => {
   console.log(`Error: ${err.message}`);
   

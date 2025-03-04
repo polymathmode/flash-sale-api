@@ -12,12 +12,10 @@ interface SaleEventCreateData {
  * Create a new flash sale event
  */
 export const createSaleEvent = async (saleData: SaleEventCreateData): Promise<ISaleEvent> => {
-  // Validate that start time is in the future
   if (new Date(saleData.startTime) <= new Date()) {
     throw new ApiError(400, 'Sale start time must be in the future');
   }
 
-  // Create the sale event
   const saleEvent = await SaleEvent.create({
     ...saleData,
     initialStock: saleData.initialStock || 200,
@@ -77,9 +75,9 @@ export const startSale = async (saleEventId: string): Promise<ISaleEvent> => {
     throw new ApiError(400, 'Sale is not in scheduled state');
   }
   
-//   if (saleEvent.startTime > now) {
-//     throw new ApiError(400, 'Sale cannot be started before scheduled start time');
-//   }
+  if (saleEvent.startTime > now) {
+    throw new ApiError(400, 'Sale cannot be started before scheduled start time');
+  }
   
   saleEvent.status = SaleStatus.ACTIVE;
   saleEvent.isActive = true;
@@ -138,12 +136,10 @@ export const resetSaleStock = async (saleEventId: string, newStock: number = 200
 
 /**
  * Automatic job to update sale status based on time
- * This should be scheduled to run regularly
  */
 export const updateSaleStatuses = async (): Promise<{ activated: number }> => {
   const now = new Date();
   
-  // Find scheduled sales that should be activated
   const salesToActivate = await SaleEvent.find({
     status: SaleStatus.SCHEDULED,
     startTime: { $lte: now }

@@ -12,7 +12,6 @@ export interface IPurchase extends Document {
   updatedAt: Date;
 }
 
-// Create schema
 const purchaseSchema = new Schema<IPurchase>({
   saleEventId: {
     type: Schema.Types.ObjectId,
@@ -37,7 +36,7 @@ const purchaseSchema = new Schema<IPurchase>({
   purchaseTime: {
     type: Date,
     default: Date.now,
-    index: true // Index for faster leaderboard queries
+    index: true 
   },
   totalPrice: {
     type: Number,
@@ -49,7 +48,7 @@ const purchaseSchema = new Schema<IPurchase>({
   }
 }, { timestamps: true });
 
-// Add compound indexes for better query performance
+//  indexes for better query performance
 purchaseSchema.index({ saleEventId: 1, userId: 1 });
 purchaseSchema.index({ purchaseTime: 1 }); // For leaderboard queries
 

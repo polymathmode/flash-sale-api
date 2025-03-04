@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import Product, { IProduct } from '../models/Product';
+import Product from '../models/Product';
 import asyncHandler from '../utils/asyncHandler';
 import ApiError from '../utils/ApiError';
+import SaleEvent, { SaleStatus } from '../models/SaleEvent';
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -38,7 +39,6 @@ interface CreateProductRequest {
 export const createProduct = asyncHandler(async (req: Request, res: Response) => {
   const { name, description, regularPrice, salePrice, imageUrl }: CreateProductRequest = req.body;
   
-  // Validate input
   if (!name || !description) {
     throw new ApiError(400, 'Please provide name and description');
   }
@@ -51,13 +51,11 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     throw new ApiError(400, 'Sale price cannot be higher than regular price');
   }
   
-  // Check if product with same name exists
   const existingProduct = await Product.findOne({ name });
   if (existingProduct) {
     throw new ApiError(400, 'Product with this name already exists');
   }
   
-  // Create product
   const product = await Product.create({
     name,
     description,
@@ -82,7 +80,6 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
     throw new ApiError(404, 'Product not found');
   }
   
-  // Update fields
   if (name) product.name = name;
   if (description) product.description = description;
   if (regularPrice) product.regularPrice = regularPrice;
@@ -90,7 +87,6 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
   if (imageUrl) product.imageUrl = imageUrl;
   if (isActive !== undefined) product.isActive = isActive;
   
-  // Validate updated product
   if (product.salePrice > product.regularPrice) {
     throw new ApiError(400, 'Sale price cannot be higher than regular price');
   }
@@ -110,11 +106,16 @@ export const deleteProduct = asyncHandler(async (req: Request, res: Response) =>
     throw new ApiError(404, 'Product not found');
   }
   
-  // Check if product is being used in any active sales
-  // This would require a check against SaleEvent model
-  // Implementation omitted for brevity
+  // check if product is being used in any active sales
+  const activeProductSales=await SaleEvent.countDocuments({
+    productId:product._id,
+    status:SaleStatus.ACTIVE,
+    isActive:true
+  })
+  if (activeProductSales > 0) {
+    throw new ApiError(400, 'Cannot deactivate a product that is currently part of an active sale');
+  }
   
-  // Instead of deleting, mark as inactive
   product.isActive = false;
   await product.save();
   
