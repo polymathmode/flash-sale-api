@@ -1,7 +1,7 @@
 import express from 'express';
 import { 
   createPurchase, 
-  getUserPurchasesForSale 
+  getUserPurchasesForSale,
 } from '../controllers/purchaseController';
 import { protect } from '../middleware/auth';
 import { purchaseLimiter } from '../middleware/rateLimiter';
